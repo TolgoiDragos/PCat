@@ -1,0 +1,129 @@
+package cup.example;
+
+import java_cup.runtime.*;
+import cup.example.Lexer;
+import java.io.IOException;
+import java.io.File;
+import java.io.FileInputStream;
+
+parser code {:
+  protected Lexer lexer;
+:}
+
+/* define how to connect to the scanner! */
+init with {:
+  ComplexSymbolFactory f = new ComplexSymbolFactory();
+  symbolFactory = f;
+  File file = new File("input.txt");
+  FileInputStream fis = null;
+  try {
+    fis = new FileInputStream(file);
+  } catch (IOException e) {
+    e.printStackTrace();
+  } 
+  lexer = new Lexer(f,fis);
+:};
+scan with {: return lexer.next_token(); :};
+
+/* Terminals (tokens returned by the scanner). */
+terminal	AND, ARRAY, BEGIN, BY, DIV, DO, ELSE,
+			ELSIF, END, EXIT, FOR, IF, IS, LOOP,
+			MOD, NOT, OF, OR, PROCEDURE, PROGRAM, READ,
+			RECORD, RETURN, THEN, TO, TYPE, VAR, WHILE,
+			WRITE;
+			
+terminal	DOT, SUB, ADD, MULT, DIVIDE, LESS, GREATER,
+			ASSIGNMENT, LESSEQ, GREATEREQ, EQUAL, INEQUALITY, COLON,
+			SEMICOLON, COMMA, LPAREN, RPAREN, LSQBKT, RSQBKT,LCBRKT,RCBRKT,
+			OPENINGBRKLESS, GREATERCLOSINGBRK;
+			
+terminal String  ID, STRING;
+terminal Integer INTEGER;
+terminal Float   REAL;
+
+/* Non terminals */
+non terminal program, body, declaration, var_decl, type_decl,
+			 procedure_decl, typename, type, component, formal_params,
+			 fp_section, statement, write_params, write_expr, expression,
+			 lvalue, actual_params, record_inits, array_inits, array_init,
+			 number, unary_op, binary_op;
+
+/* Precedences */
+precedence left SUB, ADD;
+precedence left MULT, DIVIDE;
+
+/* The grammar rules */
+program ::= PROGRAM IS body SEMICOLON ;
+
+body ::= {declaration} BEGIN {statement} END;
+
+declaration ::= VAR {var_decl}
+				| TYPE {type_decl}
+				| PROCEDURE {procedure_decl} ;
+
+var_decl ::= ID { COMMA ID } [ COLON typename ] ASSIGNMENT expression SEMICOLON;
+
+type_decl ::= ID IS type SEMICOLON;
+
+procedure_decl ::= ID formal_params [COLON typename] IS body SEMICOLON;
+
+typename ::= ID;
+
+type ::= ARRAY OF typename
+		| RECORD component {component} END ;
+		
+component ::= ID COLON typename SEMICOLON ;
+
+formal_params ::= LPAREN fp_section {SEMICOLON fp_section } RPAREN
+ 				| LPAREN RPAREN ;
+ 
+fp_section ::= ID {COMMA ID} COLON typename ;
+
+statement ::= lvalue ASSIGNMENT expression SEMICOLON
+ 			| ID actual_params SEMICOLON
+ 			| READ LPAREN lvalue {COMMA lvalue} RPAREN SEMICOLON
+			| WRITE write_params SEMICOLON
+			| IF expression THEN {statement}
+ 			  {ELSIF expression THEN {statement}}
+              [ELSE {statement}] END SEMICOLON
+			| WHILE expression DO {statement} END SEMICOLON
+			| LOOP {statement} END SEMICOLON
+			| FOR ID ASSIGNMENT expression TO expression [ BY expression ]
+			  DO {statement} END SEMICOLON
+			| EXIT SEMICOLON
+			| RETURN [expression] SEMICOLON ;
+			
+write_params ::= LPAREN write_expr {COMMA write_expr } RPAREN
+ 			   | LPAREN RPAREN ;
+ 			   
+write_expr ::= STRING
+ 			| expression ;
+ 			
+expression ::= number
+			 | lvalue
+			 | LPAREN expression RPAREN
+			 | unary-op expression
+			 | expression binary_op expression
+			 | ID actual_params
+			 | ID record_inits
+			 | ID array_inits ;
+			 
+lvalue ::= ID
+		 | lvalue LSQBKT expression RSQBKT
+		 | lvalue DOT ID ;
+		 
+actual_params ::= LPAREN expression {COMMA expression} RPAREN
+ 				| LPAREN RPAREN ;
+ 				
+record_inits ::= LCBRKT ID ASSIGNMENT expression { SEMICOLON ID SEMICOLON expression} RCBRKT ;
+
+array_inits ::= OPENINGBRKLESS array_init { COMMA array_init } GREATERCLOSINGBRK ;
+
+array_init ::= [ expression OF ] expression ;
+
+number ::= INTEGER | REAL ;
+
+unary_op ::= ADD | SUB | NOT ;
+
+binary_op ::= ADD | ADD | MULT | DIVIDE | DIV | MOD | OR | AND
+			| GREATER | LESS | EQUAL | GREATEREQ | LESSEQ | INEQUALITY ;
